@@ -70,7 +70,7 @@ goVersions="$(
 									{ GOOS: .os, GOARCH: .arch }
 									+ if .arch == "386" and .os == "linux" then
 										# i386 in Debian is non-SSE2, Alpine appears to be similar (but interesting, not FreeBSD?)
-										{ GO386: (if $major == "1.15" then "387" else "softfloat" end) }
+										{ GO386: "softfloat" }
 									elif $bashbrewArch | startswith("arm32v") then
 										{ GOARCH: "arm", GOARM: ($bashbrewArch | ltrimstr("arm32v")) }
 									else {} end
@@ -142,14 +142,13 @@ for version in "${versions[@]}"; do
 			"buster",
 			"stretch",
 			(
-				"3.14",
-				"3.13"
+				"3.15",
+				"3.14"
 			| "alpine" + .),
 			if .arches | has("windows-amd64") then
 				(
 					"ltsc2022",
-					"1809",
-					"ltsc2016"
+					"1809"
 				| "windows/windowsservercore-" + .),
 				(
 					"ltsc2022",

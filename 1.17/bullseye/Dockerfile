@@ -20,41 +20,41 @@ RUN set -eux; \
 
 ENV PATH /usr/local/go/bin:$PATH
 
-ENV GOLANG_VERSION 1.17.1
+ENV GOLANG_VERSION 1.17.9
 
 RUN set -eux; \
 	arch="$(dpkg --print-architecture)"; arch="${arch##*-}"; \
 	url=; \
 	case "$arch" in \
 		'amd64') \
-			url='https://dl.google.com/go/go1.17.1.linux-amd64.tar.gz'; \
-			sha256='dab7d9c34361dc21ec237d584590d72500652e7c909bf082758fb63064fca0ef'; \
+			url='https://dl.google.com/go/go1.17.9.linux-amd64.tar.gz'; \
+			sha256='9dacf782028fdfc79120576c872dee488b81257b1c48e9032d122cfdb379cca6'; \
 			;; \
 		'armel') \
 			export GOARCH='arm' GOARM='5' GOOS='linux'; \
 			;; \
 		'armhf') \
-			url='https://dl.google.com/go/go1.17.1.linux-armv6l.tar.gz'; \
-			sha256='ed3e4dbc9b80353f6482c441d65b51808290e94ff1d15d56da5f4a7be7353758'; \
+			url='https://dl.google.com/go/go1.17.9.linux-armv6l.tar.gz'; \
+			sha256='548543479c8d9b3eb9713ed21a7e0b5f2c90f971977db0bfadfa6eff7933282c'; \
 			;; \
 		'arm64') \
-			url='https://dl.google.com/go/go1.17.1.linux-arm64.tar.gz'; \
-			sha256='53b29236fa03ed862670a5e5e2ab2439a2dc288fe61544aa392062104ac0128c'; \
+			url='https://dl.google.com/go/go1.17.9.linux-arm64.tar.gz'; \
+			sha256='44dcdcd4f0fa6f83c15ef70b31580f1e3f95895c2f11a00e36c440c3554b6ad5'; \
 			;; \
 		'i386') \
-			url='https://dl.google.com/go/go1.17.1.linux-386.tar.gz'; \
-			sha256='e60bb44046f424ba2cc47db7b183079b5add2f8cfa6887daf45bf2f317cc2f53'; \
+			url='https://dl.google.com/go/go1.17.9.linux-386.tar.gz'; \
+			sha256='382d4207a8a3edb531fcb19dc10b71e51a6d939aedbc15efef92b93b9c1f4e2c'; \
 			;; \
 		'mips64el') \
 			export GOARCH='mips64le' GOOS='linux'; \
 			;; \
 		'ppc64el') \
-			url='https://dl.google.com/go/go1.17.1.linux-ppc64le.tar.gz'; \
-			sha256='df4fa945512c3b472cf3d2dcb2e4ae5b34819607bc63f3223f5bc0c17b637dd0'; \
+			url='https://dl.google.com/go/go1.17.9.linux-ppc64le.tar.gz'; \
+			sha256='5624fb69571b80c00bb1e7b977c9c1b6c1258d791ed904a285fdfd1b247a75ce'; \
 			;; \
 		's390x') \
-			url='https://dl.google.com/go/go1.17.1.linux-s390x.tar.gz'; \
-			sha256='f770b72e1e1281239b12b64825f87a928a1788943c7f09cac7f28985ef2cf692'; \
+			url='https://dl.google.com/go/go1.17.9.linux-s390x.tar.gz'; \
+			sha256='51180a0c7c0f31524db5a0322a49f3024075b46064101cc95e8b983148c939f1'; \
 			;; \
 		*) echo >&2 "error: unsupported architecture '$arch' (likely packaging update needed)"; exit 1 ;; \
 	esac; \
@@ -62,8 +62,8 @@ RUN set -eux; \
 	if [ -z "$url" ]; then \
 # https://github.com/golang/go/issues/38536#issuecomment-616897960
 		build=1; \
-		url='https://dl.google.com/go/go1.17.1.src.tar.gz'; \
-		sha256='49dc08339770acd5613312db8c141eaf61779995577b89d93b541ef83067e5b1'; \
+		url='https://dl.google.com/go/go1.17.9.src.tar.gz'; \
+		sha256='763ad4bafb80a9204458c5fa2b8e7327fa971aee454252c0e362c11236156813'; \
 		echo >&2; \
 		echo >&2 "warning: current architecture ($arch) does not have a compatible Go binary release; will be building from source"; \
 		echo >&2; \
@@ -76,7 +76,9 @@ RUN set -eux; \
 # https://github.com/golang/go/issues/14739#issuecomment-324767697
 	GNUPGHOME="$(mktemp -d)"; export GNUPGHOME; \
 # https://www.google.com/linuxrepositories/
-	gpg --batch --keyserver keyserver.ubuntu.com --recv-keys 'EB4C 1BFD 4F04 2F6D DDCC EC91 7721 F63B D38B 4796'; \
+	gpg --batch --keyserver keyserver.ubuntu.com --recv-keys 'EB4C 1BFD 4F04 2F6D DDCC  EC91 7721 F63B D38B 4796'; \
+# let's also fetch the specific subkey of that key explicitly that we expect "go.tgz.asc" to be signed by, just to make sure we definitely have it
+	gpg --batch --keyserver keyserver.ubuntu.com --recv-keys '2F52 8D36 D67B 69ED F998  D857 78BD 6547 3CB3 BD13'; \
 	gpg --batch --verify go.tgz.asc go.tgz; \
 	gpgconf --kill all; \
 	rm -rf "$GNUPGHOME" go.tgz.asc; \
@@ -100,11 +102,6 @@ RUN set -eux; \
 		apt-mark manual $savedAptMark > /dev/null; \
 		apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
 		rm -rf /var/lib/apt/lists/*; \
-		\
-# pre-compile the standard library, just like the official binary release tarballs do
-		go install std; \
-# go install: -race is only supported on linux/amd64, linux/ppc64le, linux/arm64, freebsd/amd64, netbsd/amd64, darwin/amd64 and windows/amd64
-#		go install -race std; \
 		\
 # remove a few intermediate / bootstrapping files the official binary release tarballs do not contain
 		rm -rf \

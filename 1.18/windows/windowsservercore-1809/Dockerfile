@@ -4,7 +4,7 @@
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
 
-FROM mcr.microsoft.com/windows/servercore:ltsc2022
+FROM mcr.microsoft.com/windows/servercore:1809
 
 # $ProgressPreference: https://github.com/PowerShell/PowerShell/issues/2138#issuecomment-251261324
 SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
@@ -43,24 +43,24 @@ RUN Write-Host ('Downloading {0} ...' -f $env:GIT_DOWNLOAD_URL); \
 	\
 	Write-Host 'Complete.';
 
-# ideally, this would be C:\go to match Linux a bit closer, but C:\go was the default install path for Go itself on Windows
-ENV GOPATH C:\\gopath
-# (https://golang.org/cl/283600)
+# for 1.17+, we'll follow the (new) Go upstream default for install (https://golang.org/cl/283600), which frees up C:\go to be the default GOPATH and thus match the Linux images more closely (https://github.com/docker-library/golang/issues/288)
+ENV GOPATH C:\\go
+# HOWEVER, please note that it is the Go upstream intention to remove GOPATH support entirely: https://blog.golang.org/go116-module-changes
 
 # PATH isn't actually set in the Docker image, so we have to set it from within the container
-RUN $newPath = ('{0}\bin;C:\go\bin;{1}' -f $env:GOPATH, $env:PATH); \
+RUN $newPath = ('{0}\bin;C:\Program Files\Go\bin;{1}' -f $env:GOPATH, $env:PATH); \
 	Write-Host ('Updating PATH: {0}' -f $newPath); \
 	[Environment]::SetEnvironmentVariable('PATH', $newPath, [EnvironmentVariableTarget]::Machine);
 # doing this first to share cache across versions more aggressively
 
-ENV GOLANG_VERSION 1.16.8
+ENV GOLANG_VERSION 1.18.1
 
-RUN $url = 'https://dl.google.com/go/go1.16.8.windows-amd64.zip'; \
+RUN $url = 'https://dl.google.com/go/go1.18.1.windows-amd64.zip'; \
 	Write-Host ('Downloading {0} ...' -f $url); \
 	[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; \
 	Invoke-WebRequest -Uri $url -OutFile 'go.zip'; \
 	\
-	$sha256 = '50304f7bdc1ebfe80bc6b64ad567c398cd53e62a75bf77226f2b7ddd1a33d385'; \
+	$sha256 = 'c30bc3f1f7314a953fe208bd9cd5e24bd9403392a6c556ced3677f9f70f71fe1'; \
 	Write-Host ('Verifying sha256 ({0}) ...' -f $sha256); \
 	if ((Get-FileHash go.zip -Algorithm sha256).Hash -ne $sha256) { \
 		Write-Host 'FAILED!'; \
@@ -69,6 +69,9 @@ RUN $url = 'https://dl.google.com/go/go1.16.8.windows-amd64.zip'; \
 	\
 	Write-Host 'Expanding ...'; \
 	Expand-Archive go.zip -DestinationPath C:\; \
+	\
+	Write-Host 'Moving ...'; \
+	Move-Item -Path C:\go -Destination 'C:\Program Files\Go'; \
 	\
 	Write-Host 'Removing ...'; \
 	Remove-Item go.zip -Force; \
