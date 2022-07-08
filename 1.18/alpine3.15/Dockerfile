@@ -15,7 +15,7 @@ RUN [ ! -e /etc/nsswitch.conf ] && echo 'hosts: files dns' > /etc/nsswitch.conf
 
 ENV PATH /usr/local/go/bin:$PATH
 
-ENV GOLANG_VERSION 1.18.1
+ENV GOLANG_VERSION 1.18.3
 
 RUN set -eux; \
 	apk add --no-cache --virtual .fetch-deps gnupg; \
@@ -23,7 +23,7 @@ RUN set -eux; \
 	url=; \
 	case "$arch" in \
 		'x86_64') \
-			export GOARCH='amd64' GOOS='linux'; \
+			export GOAMD64='v1' GOARCH='amd64' GOOS='linux'; \
 			;; \
 		'armhf') \
 			export GOARCH='arm' GOARM='6' GOOS='linux'; \
@@ -49,8 +49,8 @@ RUN set -eux; \
 	if [ -z "$url" ]; then \
 # https://github.com/golang/go/issues/38536#issuecomment-616897960
 		build=1; \
-		url='https://dl.google.com/go/go1.18.1.src.tar.gz'; \
-		sha256='efd43e0f1402e083b73a03d444b7b6576bb4c539ac46208b63a916b69aca4088'; \
+		url='https://dl.google.com/go/go1.18.3.src.tar.gz'; \
+		sha256='0012386ddcbb5f3350e407c679923811dbd283fcdc421724931614a842ecbc2d'; \
 # the precompiled binaries published by Go upstream are not compatible with Alpine, so we always build from source here 😅
 	fi; \
 	\
@@ -79,6 +79,8 @@ RUN set -eux; \
 			musl-dev \
 		; \
 		\
+		export GOCACHE='/tmp/gocache'; \
+		\
 		( \
 			cd /usr/local/go/src; \
 # set GOROOT_BOOTSTRAP + GOHOST* such that we can build Go successfully
@@ -96,6 +98,7 @@ RUN set -eux; \
 			/usr/local/go/pkg/tool/*/api \
 			/usr/local/go/pkg/tool/*/go_bootstrap \
 			/usr/local/go/src/cmd/dist/dist \
+			"$GOCACHE" \
 		; \
 	fi; \
 	\
