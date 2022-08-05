@@ -15,7 +15,7 @@ RUN [ ! -e /etc/nsswitch.conf ] && echo 'hosts: files dns' > /etc/nsswitch.conf
 
 ENV PATH /usr/local/go/bin:$PATH
 
-ENV GOLANG_VERSION 1.17.12
+ENV GOLANG_VERSION 1.19
 
 RUN set -eux; \
 	apk add --no-cache --virtual .fetch-deps gnupg; \
@@ -23,7 +23,7 @@ RUN set -eux; \
 	url=; \
 	case "$arch" in \
 		'x86_64') \
-			export GOARCH='amd64' GOOS='linux'; \
+			export GOAMD64='v1' GOARCH='amd64' GOOS='linux'; \
 			;; \
 		'armhf') \
 			export GOARCH='arm' GOARM='6' GOOS='linux'; \
@@ -49,8 +49,8 @@ RUN set -eux; \
 	if [ -z "$url" ]; then \
 # https://github.com/golang/go/issues/38536#issuecomment-616897960
 		build=1; \
-		url='https://dl.google.com/go/go1.17.12.src.tar.gz'; \
-		sha256='0d51b5b3f280c0f01f534598c0219db5878f337da6137a9ee698777413607209'; \
+		url='https://dl.google.com/go/go1.19.src.tar.gz'; \
+		sha256='9419cc70dc5a2523f29a77053cafff658ed21ef3561d9b6b020280ebceab28b9'; \
 # the precompiled binaries published by Go upstream are not compatible with Alpine, so we always build from source here 😅
 	fi; \
 	\
@@ -85,6 +85,10 @@ RUN set -eux; \
 			cd /usr/local/go/src; \
 # set GOROOT_BOOTSTRAP + GOHOST* such that we can build Go successfully
 			export GOROOT_BOOTSTRAP="$(go env GOROOT)" GOHOSTOS="$GOOS" GOHOSTARCH="$GOARCH"; \
+			if [ "${GOARCH:-}" = '386' ]; then \
+# https://github.com/golang/go/issues/52919; https://github.com/docker-library/golang/pull/426#issuecomment-1152623837
+				export CGO_CFLAGS='-fno-stack-protector'; \
+			fi; \
 			./make.bash; \
 		); \
 		\
